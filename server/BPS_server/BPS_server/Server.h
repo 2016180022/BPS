@@ -1,5 +1,7 @@
 #pragma once
 
+#define SERVERIP "127.0.0.1"
+//define SERVERIP ""
 #define SERVERPORT 9000
 #define BUFSIZE 1024
 
@@ -24,6 +26,7 @@ struct Accel2D {
 	float accel_y;
 };
 
+//스레드 함수
 DWORD WINAPI updateClient(LPVOID arg);		//Server내부 업데이트 + 데이터 송신
 DWORD WINAPI getClient(LPVOID arg);			//Client의 데이터 수신
 
@@ -31,3 +34,6 @@ DWORD WINAPI getClient(LPVOID arg);			//Client의 데이터 수신
 void err_quit(const char* msg);
 void err_display(const char* msg);
 int recvn(SOCKET s, char* buf, int len, int flags);
+
+void serverButton();
+void clientButton();

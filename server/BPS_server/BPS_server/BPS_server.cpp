@@ -9,87 +9,27 @@
 
 int main() {
 
-	//초기화
-	int retval;
-
 	//윈속 초기화
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
 		return 1;
 
-	//socket()
-	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (listen_sock == INVALID_SOCKET) err_quit("socket()");
+	printf("type command code plz\n");
+	printf("1: serverbutton\n");
+	printf("2: clientbutton\n");
 
-	//bind()
-	SOCKADDR_IN serveraddr;
-	ZeroMemory(&serveraddr, sizeof(serveraddr));
-	serveraddr.sin_family = AF_INET;
-	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	serveraddr.sin_port = htons(SERVERPORT);
-	retval = bind(listen_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
-	if (retval == SOCKET_ERROR) err_quit("bind()");
+	int commandCode;
+	int retval = scanf("%d", &commandCode);
 
-	//listen()
-	retval = listen(listen_sock, SOMAXCONN);
-	if (retval == SOCKET_ERROR) err_quit("listen()");
-
-	//데이터 통신에 사용할 변수
-	SOCKET client_sock;
-	SOCKADDR_IN clientaddr;
-	int addrlen;
-	bool token = true;
-	HANDLE getClientThread[2];
-	HANDLE updateClientThread[2];
-	ClientId cNum, cNum2;	//id와 클라이언트 정보를 같이 관리할 구조체
-
-	while (1)
+	switch (commandCode)
 	{
-		//accept()
-		addrlen = sizeof(clientaddr);
-		client_sock = accept(listen_sock, (SOCKADDR*)&clientaddr, &addrlen);
-		if (client_sock == INVALID_SOCKET) {
-			err_display("accept()");
-			break;
-		}
-
-		printf("[TCP 서버] 클라이언트 접속: IP 주소 = %s, 포트 번호 = %d\r\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
-
-		if (token)	//클라이언트 1의 연결 설정을 받으면
-		{
-			cNum.client_id = 0;
-			cNum.client_sock = client_sock;
-
-			ClientId* cTemp;
-			cTemp = &cNum;
-
-			//클라이언트1의 데이터를 받는 스레드
-			getClientThread[0] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-			updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
-			token = !token;
-		}
-		else
-		{
-			cNum2.client_id = 1;
-			cNum2.client_sock = client_sock;
-
-			ClientId* cTemp;
-			cTemp = &cNum2;
-
-			//클라이언트2의 데이터를 받는 스레드
-			getClientThread[1] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-			updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
-		}
-
+	case 1:
+		serverButton();
+		break;
+	case 2:
+		clientButton();
+		break;
 	}
-
-	//closesocket()
-	closesocket(listen_sock);
-
-	//윈속 종료
-	WSACleanup();
-
-	//이벤트 제거
 
 	return 0;
 }
@@ -244,6 +184,108 @@ DWORD WINAPI updateClient(LPVOID arg)
 
 		//event활성화
 	}
+
+}
+
+void serverButton()
+{
+	//초기화
+	int retval;
+
+	//socket()
+	SOCKET listen_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (listen_sock == INVALID_SOCKET) err_quit("socket()");
+
+	//bind()
+	SOCKADDR_IN serveraddr;
+	ZeroMemory(&serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
+	serveraddr.sin_port = htons(SERVERPORT);
+	retval = bind(listen_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
+	if (retval == SOCKET_ERROR) err_quit("bind()");
+
+	//listen()
+	retval = listen(listen_sock, SOMAXCONN);
+	if (retval == SOCKET_ERROR) err_quit("listen()");
+
+	//데이터 통신에 사용할 변수
+	SOCKET client_sock;
+	SOCKADDR_IN clientaddr;
+	int addrlen;
+	bool token = true;
+	HANDLE getClientThread[2];
+	HANDLE updateClientThread[2];
+	ClientId cNum, cNum2;	//id와 클라이언트 정보를 같이 관리할 구조체
+
+	while (1)
+	{
+		//accept()
+		addrlen = sizeof(clientaddr);
+		client_sock = accept(listen_sock, (SOCKADDR*)&clientaddr, &addrlen);
+		if (client_sock == INVALID_SOCKET) {
+			err_display("accept()");
+			break;
+		}
+
+		printf("[TCP 서버] 클라이언트 접속: IP 주소 = %s, 포트 번호 = %d\r\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
+
+		//if (token)	//클라이언트 1의 연결 설정을 받으면
+		//{
+		//	cNum.client_id = 0;
+		//	cNum.client_sock = client_sock;
+
+		//	ClientId* cTemp;
+		//	cTemp = &cNum;
+
+		//	//클라이언트1의 데이터를 받는 스레드
+		//	getClientThread[0] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
+		//	updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+		//	token = !token;
+		//}
+		//else
+		//{
+		//	cNum2.client_id = 1;
+		//	cNum2.client_sock = client_sock;
+
+		//	ClientId* cTemp;
+		//	cTemp = &cNum2;
+
+		//	//클라이언트2의 데이터를 받는 스레드
+		//	getClientThread[1] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
+		//	updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+		//}
+
+	}
+
+	//closesocket()
+	closesocket(listen_sock);
+
+	//윈속 종료
+	WSACleanup();
+
+	//이벤트 제거
+}
+
+void clientButton()
+{
+	//초기화
+	int retval;
+	char buf[BUFSIZE];
+
+	//socket()
+	SOCKET client_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (client_sock == INVALID_SOCKET) err_quit("socket()");
+
+	//connect()
+	SOCKADDR_IN serveraddr;
+	ZeroMemory(&serveraddr, sizeof(serveraddr));
+	serveraddr.sin_family = AF_INET;
+	serveraddr.sin_addr.s_addr = inet_addr(SERVERIP);
+	serveraddr.sin_port = htons(SERVERPORT);
+	retval = connect(client_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
+	if (retval == SOCKET_ERROR)
+		err_quit((char*)"connect()");
 
 }
 
