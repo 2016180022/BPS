@@ -53,7 +53,7 @@ DWORD WINAPI getClient(LPVOID arg)
 	addrLen = sizeof(clientAddr);
 	getpeername(argInfo->client_sock, (SOCKADDR*)&clientAddr, &addrLen);
 
-	//printf("data 수신 시작\n");
+	printf("data 수신 시작\n");
 	//data-recving
 	while (1)
 	{
@@ -70,8 +70,8 @@ DWORD WINAPI getClient(LPVOID arg)
 
 		header = atoi(buf);
 
-		//if (id == 0)
-		//	printf("[TCP 클라이언트1] 헤더 수신 완료: %d\n", header);
+		if (id == 0)
+			printf("[TCP 클라이언트1] 헤더 수신 완료: %d\n", header);
 		//else
 		//	printf("[TCP 클라이언트2] 헤더 수신 완료: %d\n", header);
 
@@ -93,12 +93,12 @@ DWORD WINAPI getClient(LPVOID arg)
 			if (id == 0)
 			{
 				//클라이언트1 수신 정보 적용
-				//printf("[TCP 클라이언트1 수신 정보] pPosition.x : %d, pPosition.y : %d\n", pPosition[0].position_x, pPosition[0].position_y);
+				printf("[TCP 클라이언트1 수신 정보] pPosition.x : %d, pPosition.y : %d\n", temp->position_x, temp->position_y);
 			}
 			else
 			{
 				//클라이언트2 수신 정보 적용
-				//printf("[TCP 클라이언트2 수신 정보] pPosition.x : %d, pPosition.y : %d\n", pPosition[1].position_x, pPosition[1].position_y);
+				printf("[TCP 클라이언트2 수신 정보] pPosition.x : %d, pPosition.y : %d\n", temp->position_x, temp->position_y);
 			}
 
 			break;
@@ -150,10 +150,7 @@ DWORD WINAPI updateClient(LPVOID arg)
 		//업데이트
 
 		//헤더 변경
-		//if (P1Goal || P2Goal)
-		//	snprintf(buf, sizeof(buf), "%d", GOAL);
-		//else
-		//	snprintf(buf, sizeof(buf), "%d", B_POSITION);
+		snprintf(buf, sizeof(buf), "%d", DEFAULTCASE);
 
 		header = atoi(buf);
 
@@ -169,17 +166,23 @@ DWORD WINAPI updateClient(LPVOID arg)
 
 			//데이터 전송
 			//retval = send(argInfo->client_sock, (char*)&score, sizeof(int), 0);
+			//if (retval == SOCKET_ERROR) {
+			//	err_display("send()");
+			//}
+
+			Point2D temp;
+			temp.position_x = 10;
+			temp.position_y = 20;
+
+			//구조체 데이터 송신 형식
+			retval = send(argInfo->client_sock, (char*)&temp, sizeof(Point2D), 0);
 			if (retval == SOCKET_ERROR) {
 				err_display("send()");
 			}
 
 			break;
 			
-			//구조체 데이터 송신 형식
-			//retval = send(argInfo->client_sock, (char*)&temp, sizeof(Point2D), 0);
-			//if (retval == SOCKET_ERROR) {
-			//	err_display("send()");
-			//}
+
 		}
 
 		//event활성화
@@ -218,7 +221,7 @@ void serverButton()
 	HANDLE updateClientThread[2];
 	ClientId cNum, cNum2;	//id와 클라이언트 정보를 같이 관리할 구조체
 
-	while (1)
+	while(1)
 	{
 		//accept()
 		addrlen = sizeof(clientaddr);
@@ -230,31 +233,33 @@ void serverButton()
 
 		printf("[TCP 서버] 클라이언트 접속: IP 주소 = %s, 포트 번호 = %d\r\n", inet_ntoa(clientaddr.sin_addr), ntohs(clientaddr.sin_port));
 
-		//if (token)	//클라이언트 1의 연결 설정을 받으면
-		//{
-		//	cNum.client_id = 0;
-		//	cNum.client_sock = client_sock;
+		if (token)	//클라이언트 1의 연결 설정을 받으면
+		{
+			cNum.client_id = 0;
+			cNum.client_sock = client_sock;
 
-		//	ClientId* cTemp;
-		//	cTemp = &cNum;
+			ClientId* cTemp;
+			cTemp = &cNum;
 
-		//	//클라이언트1의 데이터를 받는 스레드
-		//	getClientThread[0] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-		//	updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
-		//	token = !token;
-		//}
-		//else
-		//{
-		//	cNum2.client_id = 1;
-		//	cNum2.client_sock = client_sock;
+			//클라이언트1의 데이터를 받는 스레드
+			getClientThread[0] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
+			//updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+			token = !token;
+		}
+		else
+		{
+			cNum2.client_id = 1;
+			cNum2.client_sock = client_sock;
 
-		//	ClientId* cTemp;
-		//	cTemp = &cNum2;
+			ClientId* cTemp;
+			cTemp = &cNum2;
 
-		//	//클라이언트2의 데이터를 받는 스레드
-		//	getClientThread[1] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-		//	updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
-		//}
+			//클라이언트2의 데이터를 받는 스레드
+			getClientThread[1] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
+			//updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+
+			printf("ALl Player Connected\n");
+		}
 
 	}
 
@@ -274,8 +279,8 @@ void clientButton()
 	char buf[BUFSIZE];
 
 	//socket()
-	SOCKET client_sock = socket(AF_INET, SOCK_STREAM, 0);
-	if (client_sock == INVALID_SOCKET) err_quit("socket()");
+	SOCKET server_sock = socket(AF_INET, SOCK_STREAM, 0);
+	if (server_sock == INVALID_SOCKET) err_quit("socket()");
 
 	//connect()
 	SOCKADDR_IN serveraddr;
@@ -283,10 +288,31 @@ void clientButton()
 	serveraddr.sin_family = AF_INET;
 	serveraddr.sin_addr.s_addr = inet_addr(SERVERIP);
 	serveraddr.sin_port = htons(SERVERPORT);
-	retval = connect(client_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
+	retval = connect(server_sock, (SOCKADDR*)&serveraddr, sizeof(serveraddr));
 	if (retval == SOCKET_ERROR)
 		err_quit((char*)"connect()");
 
+	Point2D temp;
+	temp.position_x = 100;
+	temp.position_y = 200;
+
+	while (1)
+	{
+		//header set
+		snprintf(buf, sizeof(buf), "%d", DEFAULTCASE);
+
+		//header 전송
+		retval = send(server_sock, buf, sizeof(int), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("send()");
+		}
+
+		//구조체 데이터 송신 형식
+		retval = send(server_sock, (char*)&temp, sizeof(Point2D), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("send()");
+		}
+	}
 }
 
 // 소켓 함수 오류 출력 후 종료
