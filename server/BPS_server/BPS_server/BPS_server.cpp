@@ -7,7 +7,16 @@
 #include <stdio.h>
 #include "Server.h"
 
+//이벤트 핸들
+HANDLE recvData[2], updateData[2];
+
 int main() {
+
+	//이벤트 생성
+	recvData[0] = CreateEvent(nullptr, false, false, nullptr);
+	recvData[1] = CreateEvent(nullptr, false, false, nullptr);
+	updateData[0] = CreateEvent(nullptr, false, true, nullptr);
+	updateData[1] = CreateEvent(nullptr, false, true, nullptr);
 
 	//윈속 초기화
 	WSADATA wsa;
@@ -30,6 +39,15 @@ int main() {
 		clientButton();
 		break;
 	}
+
+	//윈속 종료
+	WSACleanup();
+
+	//이벤트 제거
+	CloseHandle(recvData[0]);
+	CloseHandle(updateData[0]);
+	CloseHandle(recvData[1]);
+	CloseHandle(updateData[1]);
 
 	return 0;
 }
@@ -118,6 +136,10 @@ DWORD WINAPI getClient(LPVOID arg)
 		}
 
 		//이벤트 활성화
+		if (id == 0)
+			SetEvent(recvData[0]);
+		//else
+		//	SetEvent(recvData[1]);
 	}
 }
 
@@ -186,6 +208,10 @@ DWORD WINAPI updateClient(LPVOID arg)
 		}
 
 		//event활성화
+		//if (id == 0)
+		//	SetEvent(updateData[0]);
+		//else
+		//	SetEvent(updateData[1]);
 	}
 
 }
@@ -265,11 +291,6 @@ void serverButton()
 
 	//closesocket()
 	closesocket(listen_sock);
-
-	//윈속 종료
-	WSACleanup();
-
-	//이벤트 제거
 }
 
 void clientButton()

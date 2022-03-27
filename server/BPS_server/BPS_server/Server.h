@@ -1,7 +1,7 @@
 #pragma once
 
 #define SERVERIP "127.0.0.1"
-//define SERVERIP ""
+//#define SERVERIP "192.168.35.203"
 #define SERVERPORT 9000
 #define BUFSIZE 1024
 
