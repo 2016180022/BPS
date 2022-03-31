@@ -10,7 +10,16 @@
 //이벤트 핸들
 HANDLE recvData[2], updateData[2];
 
+//업데이트 확인용 데이터
+Point2D demoPos[2];
+
 int main() {
+
+	//초기화
+	demoPos[0].position_x = 0;
+	demoPos[0].position_y = 0;
+	demoPos[1].position_x = 0;
+	demoPos[1].position_y = 0;
 
 	//이벤트 생성
 	recvData[0] = CreateEvent(nullptr, false, false, nullptr);
@@ -78,6 +87,10 @@ DWORD WINAPI getClient(LPVOID arg)
 		//declare additional-needed data
 
 		//update 이벤트 대기
+		if (id == 0)
+			WaitForSingleObject(updateData[0], INFINITE);
+		else
+			WaitForSingleObject(updateData[1], INFINITE);
 
 		//헤더 데이터 수신
 		//recvCommand(header);
@@ -90,8 +103,8 @@ DWORD WINAPI getClient(LPVOID arg)
 
 		if (id == 0)
 			printf("[TCP 클라이언트1] 헤더 수신 완료: %d\n", header);
-		//else
-		//	printf("[TCP 클라이언트2] 헤더 수신 완료: %d\n", header);
+		else
+			printf("[TCP 클라이언트2] 헤더 수신 완료: %d\n", header);
 
 		//헤더별 분기
 		//header switch
@@ -138,8 +151,8 @@ DWORD WINAPI getClient(LPVOID arg)
 		//이벤트 활성화
 		if (id == 0)
 			SetEvent(recvData[0]);
-		//else
-		//	SetEvent(recvData[1]);
+		else
+			SetEvent(recvData[1]);
 	}
 }
 
@@ -153,6 +166,7 @@ DWORD WINAPI updateClient(LPVOID arg)
 	int addrLen;
 	char buf[BUFSIZE];
 	ClientId* argInfo;
+	Point2D temp;
 
 	//클라이언트 번호 처리(각 클라이언트 정보 구분)
 	argInfo = (ClientId*)arg;
@@ -168,8 +182,16 @@ DWORD WINAPI updateClient(LPVOID arg)
 	while (1)
 	{
 		//getclient 종료 대기
+		if (id == 0)
+			WaitForSingleObject(recvData[0], INFINITE);
+		else
+			WaitForSingleObject(recvData[1], INFINITE);
 
 		//업데이트
+		demoPos[0].position_x++;
+		demoPos[0].position_y++;
+		demoPos[1].position_x--;
+		demoPos[1].position_y--;
 
 		//헤더 변경
 		snprintf(buf, sizeof(buf), "%d", DEFAULTCASE);
@@ -186,15 +208,16 @@ DWORD WINAPI updateClient(LPVOID arg)
 				err_display("send()");
 			}
 
-			//데이터 전송
-			//retval = send(argInfo->client_sock, (char*)&score, sizeof(int), 0);
-			//if (retval == SOCKET_ERROR) {
-			//	err_display("send()");
-			//}
-
-			Point2D temp;
-			temp.position_x = 10;
-			temp.position_y = 20;
+			if (id == 0)
+			{
+				temp.position_x = demoPos[1].position_x;
+				temp.position_y = demoPos[1].position_y;
+			}
+			else
+			{
+				temp.position_x = demoPos[0].position_x;
+				temp.position_y = demoPos[0].position_y;
+			}
 
 			//구조체 데이터 송신 형식
 			retval = send(argInfo->client_sock, (char*)&temp, sizeof(Point2D), 0);
@@ -204,14 +227,13 @@ DWORD WINAPI updateClient(LPVOID arg)
 
 			break;
 			
-
 		}
 
 		//event활성화
-		//if (id == 0)
-		//	SetEvent(updateData[0]);
-		//else
-		//	SetEvent(updateData[1]);
+		if (id == 0)
+			SetEvent(updateData[0]);
+		else
+			SetEvent(updateData[1]);
 	}
 
 }
@@ -269,7 +291,7 @@ void serverButton()
 
 			//클라이언트1의 데이터를 받는 스레드
 			getClientThread[0] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-			//updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+			updateClientThread[0] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
 			token = !token;
 		}
 		else
@@ -282,7 +304,7 @@ void serverButton()
 
 			//클라이언트2의 데이터를 받는 스레드
 			getClientThread[1] = CreateThread(nullptr, 0, getClient, (LPVOID)cTemp, 0, nullptr);
-			//updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
+			updateClientThread[1] = CreateThread(nullptr, 0, updateClient, (LPVOID)cTemp, 0, nullptr);
 
 			printf("ALl Player Connected\n");
 		}
@@ -298,6 +320,10 @@ void clientButton()
 	//초기화
 	int retval;
 	char buf[BUFSIZE];
+	int header;
+	Point2D pos;
+	pos.position_x = 1000;
+	pos.position_y = 1000;
 
 	//socket()
 	SOCKET server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -313,10 +339,6 @@ void clientButton()
 	if (retval == SOCKET_ERROR)
 		err_quit((char*)"connect()");
 
-	Point2D temp;
-	temp.position_x = 100;
-	temp.position_y = 200;
-
 	while (1)
 	{
 		//header set
@@ -329,9 +351,33 @@ void clientButton()
 		}
 
 		//구조체 데이터 송신 형식
-		retval = send(server_sock, (char*)&temp, sizeof(Point2D), 0);
+		retval = send(server_sock, (char*)&pos, sizeof(Point2D), 0);
 		if (retval == SOCKET_ERROR) {
 			err_display("send()");
+		}
+
+		//헤더 데이터 수신
+		//recvCommand(header);
+		retval = recvn(server_sock, buf, sizeof(int), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("recv()");
+		}
+
+		header = atoi(buf);
+
+		switch (header)
+		{
+		case DEFAULTCASE:
+			retval = recvn(server_sock, buf, sizeof(Point2D), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("recv()");
+			}
+			
+			pos = *(Point2D*)buf;
+
+			printf("[서버] 포지션 정보 수신 x: %d, y: %d\n", pos.position_x, pos.position_y);
+
+			break;
 		}
 	}
 }
