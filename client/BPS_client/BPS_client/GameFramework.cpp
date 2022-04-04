@@ -33,6 +33,13 @@ GameFramework::GameFramework()
 
 	clientWidth = FRAME_BUFFER_WIDTH;
 	clientHeight = FRAME_BUFFER_HEIGHT;
+
+	_tcscpy_s(frameRateStr, _T("BPS Client ("));
+}
+
+GameFramework::~GameFramework()
+{
+
 }
 
 bool GameFramework::OnCreate(HINSTANCE hInstance, HWND hMainWnd)
@@ -389,6 +396,8 @@ void GameFramework::WaitForGpuComplete()
 
 void GameFramework::FrameAdvance()
 {
+	gameTimer.Tick(0.0f);
+
 	ProcessInput();
 	AnimateObjects();
 
@@ -447,9 +456,7 @@ void GameFramework::FrameAdvance()
 	pDxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
 
 	swapChainBufferIndex = pDxgiSwapChain->GetCurrentBackBufferIndex();
-}
 
-GameFramework::~GameFramework()
-{
-
+	gameTimer.getFrameRate(frameRateStr + 12, 37);
+	::SetWindowText(m_hwnd, frameRateStr);
 }

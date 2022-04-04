@@ -1,4 +1,7 @@
 #pragma once
+
+#include "GameTimer.h"
+
 class GameFramework
 {
 private:
@@ -38,6 +41,9 @@ private:
 
 	D3D12_VIEWPORT d3dViewport;
 	D3D12_RECT d3dScissorRect;
+
+	GameTimer gameTimer;
+	_TCHAR frameRateStr[50];
 
 public:
 	GameFramework();
