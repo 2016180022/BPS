@@ -1,6 +1,7 @@
 #pragma once
 
 #include "GameTimer.h"
+#include "Scene.h"
 
 class GameFramework
 {
@@ -45,6 +46,9 @@ private:
 	GameTimer gameTimer;
 	_TCHAR frameRateStr[50];
 
+	UINT64 fenceValues[swapChainBuffersNum];
+	Scene* pScene;
+
 public:
 	GameFramework();
 	~GameFramework();
@@ -66,6 +70,7 @@ public:
 	void ProcessInput();
 	void AnimateObjects();
 	void FrameAdvance();
+	void MoveToNextFrame();
 
 	void WaitForGpuComplete();
 

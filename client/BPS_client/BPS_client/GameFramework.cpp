@@ -26,6 +26,8 @@ GameFramework::GameFramework()
 	dsvDescriptorIncrementSize = 0;
 
 	swapChainBufferIndex = 0;
+	for (int i = 0; i < swapChainBuffersNum; ++i)
+		fenceValues[i] = 0;
 
 	pD3dFence = NULL;
 	fenceValue = 0;
@@ -35,6 +37,7 @@ GameFramework::GameFramework()
 	clientHeight = FRAME_BUFFER_HEIGHT;
 
 	_tcscpy_s(frameRateStr, _T("BPS Client ("));
+	pScene = NULL;
 }
 
 GameFramework::~GameFramework()
@@ -296,12 +299,19 @@ void GameFramework::CreateDepthStencilView()
 
 void GameFramework::BuildObjects()
 {
+	pScene = new Scene();
+	if (pScene)
+		pScene->BuildObjects(pD3dDevice);
 
+	gameTimer.Reset();
 }
 
 void GameFramework::ReleaseObjects()
 {
-
+	if (pScene)
+		pScene->ReleaseObjects();
+	if (pScene)
+		delete pScene;
 }
 
 void GameFramework::OnProcessingMouseMessage(HWND hwnd, UINT nMessageID,
@@ -378,15 +388,28 @@ void GameFramework::ProcessInput()
 
 void GameFramework::AnimateObjects()
 {
-
+	if (pScene)
+		pScene->AnimateObjects(gameTimer.getTimeElapsed());
 }
 
 void GameFramework::WaitForGpuComplete()
 {
-	fenceValue++;
-	const UINT64 fence = fenceValue;
+	UINT64 fence = ++fenceValues[swapChainBufferIndex];
 	HRESULT hResult = pD3dCommandQueue->Signal(pD3dFence, fence);
 
+	if (pD3dFence->GetCompletedValue() < fence)
+	{
+		hResult = pD3dFence->SetEventOnCompletion(fence, fenceEvent);
+		::WaitForSingleObject(fenceEvent, INFINITE);
+	}
+}
+
+void GameFramework::MoveToNextFrame()
+{
+	swapChainBufferIndex = pDxgiSwapChain->GetCurrentBackBufferIndex();
+
+	UINT64 fence = ++fenceValues[swapChainBufferIndex];
+	HRESULT hResult = pD3dCommandQueue->Signal(pD3dFence, fence);
 	if (pD3dFence->GetCompletedValue() < fence)
 	{
 		hResult = pD3dFence->SetEventOnCompletion(fence, fenceEvent);
@@ -436,6 +459,11 @@ void GameFramework::FrameAdvance()
 
 	// Rendering Code
 
+	if (pScene)
+		pScene->Render(pD3dCommandList);
+
+	//
+
 	d3dResourceBarrier.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
 	d3dResourceBarrier.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
 	d3dResourceBarrier.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
@@ -448,14 +476,16 @@ void GameFramework::FrameAdvance()
 
 	WaitForGpuComplete();
 
-	DXGI_PRESENT_PARAMETERS dxgiPresentParameters;
+	/*DXGI_PRESENT_PARAMETERS dxgiPresentParameters;
 	dxgiPresentParameters.DirtyRectsCount = 0;
 	dxgiPresentParameters.pDirtyRects = NULL;
 	dxgiPresentParameters.pScrollRect = NULL;
-	dxgiPresentParameters.pScrollOffset = NULL;
-	pDxgiSwapChain->Present1(1, 0, &dxgiPresentParameters);
+	dxgiPresentParameters.pScrollOffset = NULL;*/
+	pDxgiSwapChain->Present(0, 0);
 
-	swapChainBufferIndex = pDxgiSwapChain->GetCurrentBackBufferIndex();
+	MoveToNextFrame();
+
+	//swapChainBufferIndex = pDxgiSwapChain->GetCurrentBackBufferIndex();
 
 	gameTimer.getFrameRate(frameRateStr + 12, 37);
 	::SetWindowText(m_hwnd, frameRateStr);
