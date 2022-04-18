@@ -10,16 +10,17 @@
 //이벤트 핸들
 HANDLE recvData[2], updateData[2];
 
-//업데이트 확인용 데이터
-Point2D demoPos[2];
+//플레이어 관리용 전역 변수
+Point2D playerPos[2];
+Accel2D bulletPos[2];
 
 int main() {
 
 	//초기화
-	demoPos[0].position_x = 0;
-	demoPos[0].position_y = 0;
-	demoPos[1].position_x = 0;
-	demoPos[1].position_y = 0;
+	playerPos[0].position_x = 0;
+	playerPos[0].position_y = 0;
+	playerPos[1].position_x = 0;
+	playerPos[1].position_y = 0;
 
 	//이벤트 생성
 	recvData[0] = CreateEvent(nullptr, false, false, nullptr);
@@ -106,44 +107,59 @@ DWORD WINAPI getClient(LPVOID arg)
 		else
 			printf("[TCP 클라이언트2] 헤더 수신 완료: %d\n", header);
 
+
+		//포지션 데이터 수신(상시 통신)
+		retval = recvn(argInfo->client_sock, buf, sizeof(Point2D), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("recv()");
+		}
+
+		Point2D temp;
+		temp = *(Point2D*)buf;
+
+		if (id == 0)
+		{
+			//클라이언트1 수신 정보 적용
+			printf("[TCP 클라이언트1 수신 정보] pPos.x : %d, pPos.y : %d\n", temp.position_x, temp.position_y);
+			playerPos[0] = temp;
+		}
+		else
+		{
+			//클라이언트2 수신 정보 적용
+			printf("[TCP 클라이언트2 수신 정보] pPos.x : %d, pPos.y : %d\n", temp.position_x, temp.position_y);
+			playerPos[1] = temp;
+		}
+
 		//헤더별 분기
 		//header switch
 		switch (header)
 		{
-		case DEFAULTCASE:
-			//포지션 데이터 수신
-			//position data recv
-			retval = recvn(argInfo->client_sock, buf, sizeof(Point2D), 0);
-			if (retval == SOCKET_ERROR) {
-				err_display("recv()");
-			}
-
-			Point2D* temp;
-			temp = (Point2D*)buf;
-
-			if (id == 0)
-			{
-				//클라이언트1 수신 정보 적용
-				printf("[TCP 클라이언트1 수신 정보] pPosition.x : %d, pPosition.y : %d\n", temp->position_x, temp->position_y);
-			}
-			else
-			{
-				//클라이언트2 수신 정보 적용
-				printf("[TCP 클라이언트2 수신 정보] pPosition.x : %d, pPosition.y : %d\n", temp->position_x, temp->position_y);
-			}
-
+		case PLAYERMOVE:
 			break;
 
-		case FIRSTCASE:
-			//충돌 데이터 수신(Accel)
-			//포지션 데이터 수신
+		case PLAYERSHOOT:
+			//포지션 데이터(Point2D) + 탄 데이터(Accel2D) 수신			
+
 			retval = recv(argInfo->client_sock, buf, sizeof(Accel2D), 0);
 			if (retval == SOCKET_ERROR) {
 				err_display("recv()");
 			}
 
-			Accel2D* tempAccel;
-			tempAccel = (Accel2D*)buf;
+			Accel2D tempAccel;
+			tempAccel = *(Accel2D*)buf;
+
+			if (id == 0)
+			{
+				//클라이언트1 수신 정보 적용
+				printf("[TCP 클라이언트1 수신 정보] bAcc.x : %f, bAcc.y : %f\n", tempAccel.accel_x, tempAccel.accel_y);
+				bulletPos[0] = tempAccel;
+			}
+			else
+			{
+				//클라이언트2 수신 정보 적용
+				printf("[TCP 클라이언트2 수신 정보] bAcc.x : %f, bAcc.y : %f\n", tempAccel.accel_x, tempAccel.accel_y);
+				bulletPos[1] = tempAccel;
+			}
 
 			break;
 		}
@@ -166,7 +182,6 @@ DWORD WINAPI updateClient(LPVOID arg)
 	int addrLen;
 	char buf[BUFSIZE];
 	ClientId* argInfo;
-	Point2D temp;
 
 	//클라이언트 번호 처리(각 클라이언트 정보 구분)
 	argInfo = (ClientId*)arg;
@@ -188,45 +203,75 @@ DWORD WINAPI updateClient(LPVOID arg)
 			WaitForSingleObject(recvData[1], INFINITE);
 
 		//업데이트
-		demoPos[0].position_x++;
-		demoPos[0].position_y++;
-		demoPos[1].position_x--;
-		demoPos[1].position_y--;
+		//playerPos[0].position_x++;
+		//playerPos[0].position_y++;
+		//playerPos[1].position_x--;
+		//playerPos[1].position_y--;
+		bulletPos[0].accel_x++;
+		bulletPos[0].accel_y++;
+		bulletPos[1].accel_x--;
+		bulletPos[1].accel_y--;
 
 		//헤더 변경
-		snprintf(buf, sizeof(buf), "%d", DEFAULTCASE);
+		//snprintf(buf, sizeof(buf), "%d", PLAYERMOVE);
+		snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
 
 		header = atoi(buf);
+
+		//헤더 데이터 + 포지션 데이터 송신(상시 통신)
+		//헤더 전송
+		retval = send(argInfo->client_sock, buf, sizeof(int), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("send()");
+		}
+
+		Point2D temp;
+
+		if (id == 0)
+		{
+			temp.position_x = playerPos[1].position_x;
+			temp.position_y = playerPos[1].position_y;
+		}
+		else
+		{
+			temp.position_x = playerPos[0].position_x;
+			temp.position_y = playerPos[0].position_y;
+		}
+
+		//포지션 데이터 송신
+		retval = send(argInfo->client_sock, (char*)&temp, sizeof(Point2D), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("send()");
+		}
 
 		//헤더별 분기
 		switch (header)
 		{
-		case DEFAULTCASE:
-			//헤더 전송
-			retval = send(argInfo->client_sock, buf, sizeof(int), 0);
-			if (retval == SOCKET_ERROR) {
-				err_display("send()");
-			}
+		case PLAYERMOVE:			
+			break;
+			
+		case PLAYERSHOOT:
+
+			Accel2D tempAccel;
 
 			if (id == 0)
 			{
-				temp.position_x = demoPos[1].position_x;
-				temp.position_y = demoPos[1].position_y;
+				tempAccel.accel_x = bulletPos[1].accel_x;
+				tempAccel.accel_y = bulletPos[1].accel_y;
 			}
 			else
 			{
-				temp.position_x = demoPos[0].position_x;
-				temp.position_y = demoPos[0].position_y;
+				tempAccel.accel_x = bulletPos[0].accel_x;
+				tempAccel.accel_y = bulletPos[0].accel_y;
 			}
 
-			//구조체 데이터 송신 형식
-			retval = send(argInfo->client_sock, (char*)&temp, sizeof(Point2D), 0);
+			//불릿 데이터 송신
+			retval = send(argInfo->client_sock, (char*)&tempAccel, sizeof(Accel2D), 0);
 			if (retval == SOCKET_ERROR) {
 				err_display("send()");
 			}
 
-			break;
-			
+			break;			
 		}
 
 		//event활성화
@@ -321,9 +366,14 @@ void clientButton()
 	int retval;
 	char buf[BUFSIZE];
 	int header;
+
 	Point2D pos;
 	pos.position_x = 1000;
 	pos.position_y = 1000;
+
+	Accel2D acc;
+	acc.accel_x = 100;
+	acc.accel_y = 100;
 
 	//socket()
 	SOCKET server_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -342,7 +392,10 @@ void clientButton()
 	while (1)
 	{
 		//header set
-		snprintf(buf, sizeof(buf), "%d", DEFAULTCASE);
+		//snprintf(buf, sizeof(buf), "%d", PLAYERMOVE);
+		snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
+
+		header = atoi(buf);
 
 		//header 전송
 		retval = send(server_sock, buf, sizeof(int), 0);
@@ -350,11 +403,28 @@ void clientButton()
 			err_display("send()");
 		}
 
-		//구조체 데이터 송신 형식
+		//포지션 데이터 송신(상시 통신)
 		retval = send(server_sock, (char*)&pos, sizeof(Point2D), 0);
 		if (retval == SOCKET_ERROR) {
 			err_display("send()");
 		}
+
+		switch (header)
+		{
+		case PLAYERMOVE:
+			break;
+		case PLAYERSHOOT:
+
+			//불릿 데이터 송신
+			retval = send(server_sock, (char*)&acc, sizeof(Accel2D), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("send()");
+			}
+
+			break;
+		}
+
+		
 
 		//헤더 데이터 수신
 		//recvCommand(header);
@@ -365,17 +435,32 @@ void clientButton()
 
 		header = atoi(buf);
 
+		//포지션 데이터 수신(상시 통신)
+		retval = recvn(server_sock, buf, sizeof(Point2D), 0);
+		if (retval == SOCKET_ERROR) {
+			err_display("recv()");
+		}
+
+		pos = *(Point2D*)buf;
+
+		printf("[서버] 포지션 정보 수신 x: %d, y: %d\n", pos.position_x, pos.position_y);
+
 		switch (header)
 		{
-		case DEFAULTCASE:
-			retval = recvn(server_sock, buf, sizeof(Point2D), 0);
+		case PLAYERMOVE:			
+			break;
+
+		case PLAYERSHOOT:
+
+			//불릿 데이터 수신
+			retval = recvn(server_sock, buf, sizeof(Accel2D), 0);
 			if (retval == SOCKET_ERROR) {
 				err_display("recv()");
 			}
-			
-			pos = *(Point2D*)buf;
 
-			printf("[서버] 포지션 정보 수신 x: %d, y: %d\n", pos.position_x, pos.position_y);
+			acc = *(Accel2D*)buf;
+
+			printf("[서버] 불릿 정보 수신 x: %f, y: %f\n", acc.accel_x, acc.accel_y);
 
 			break;
 		}

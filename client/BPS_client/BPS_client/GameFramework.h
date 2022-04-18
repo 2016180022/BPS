@@ -6,6 +6,8 @@
 class GameFramework
 {
 private:
+	Scene* pScene;
+
 	HINSTANCE m_hInstance;
 	HWND m_hwnd;
 
@@ -21,6 +23,7 @@ private:
 
 	static const UINT swapChainBuffersNum = 2;
 	UINT swapChainBufferIndex;
+	ID3D12Resource* d3dSwapChainBackBuffers[swapChainBuffersNum];
 
 	ID3D12Resource* d3dRenderTargetBuffers[swapChainBuffersNum];
 	ID3D12DescriptorHeap* pD3dRtvDescriptorHeap;
@@ -39,6 +42,7 @@ private:
 	ID3D12Fence* pD3dFence;
 	UINT64 fenceValue;
 	HANDLE fenceEvent;
+	UINT64 fenceValues[swapChainBuffersNum];
 
 	D3D12_VIEWPORT d3dViewport;
 	D3D12_RECT d3dScissorRect;
@@ -56,6 +60,7 @@ public:
 	bool OnCreate(HINSTANCE hInstance, HWND hMainWnd);
 	void OnDestroy();
 
+	void ChangeSwapChainState();
 	void CreateSwapChain();
 	void CreateRtvAndDsvDescriptorHeaps();
 	void CreateDirect3DDevice();

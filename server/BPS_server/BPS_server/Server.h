@@ -5,8 +5,8 @@
 #define SERVERPORT 9000
 #define BUFSIZE 1024
 
-#define DEFAULTCASE 0001
-#define FIRSTCASE 0002
+#define PLAYERMOVE 0001
+#define PLAYERSHOOT 0002
 
 //클라이언트와 해당 클라이언트의 식별자(ID)를 묶은 구조체
 struct ClientId {
