@@ -50,9 +50,6 @@ private:
 	GameTimer gameTimer;
 	_TCHAR frameRateStr[50];
 
-	UINT64 fenceValues[swapChainBuffersNum];
-	Scene* pScene;
-
 public:
 	GameFramework();
 	~GameFramework();
