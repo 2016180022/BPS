@@ -198,9 +198,9 @@ DWORD WINAPI updateClient(LPVOID arg)
 	{
 		//getclient 종료 대기
 		if (id == 0)
-			WaitForSingleObject(recvData[0], INFINITE);
-		else
 			WaitForSingleObject(recvData[1], INFINITE);
+		else
+			WaitForSingleObject(recvData[0], INFINITE);
 
 		//업데이트
 		//playerPos[0].position_x++;
