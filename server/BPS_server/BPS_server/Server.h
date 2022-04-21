@@ -7,6 +7,7 @@
 
 #define PLAYERMOVE 0001
 #define PLAYERSHOOT 0002
+#define PLAYERHIT 0003
 
 //클라이언트와 해당 클라이언트의 식별자(ID)를 묶은 구조체
 struct ClientId {
@@ -24,6 +25,25 @@ struct Point2D {
 struct Accel2D {
 	float accel_x;
 	float accel_y;
+};
+
+class Player {
+
+public:
+	Point2D position;
+	Accel2D bAccel;
+	int hp;
+	int number;
+
+	Player() {};
+	~Player() {};
+
+	Player(Point2D pos, Accel2D bAcc, int hp, int number) :  hp(100) {}
+
+public:
+	void printHp() { std::cout << "플레이어" << number << "의 현재 체력: " << hp << std::endl; };
+	void printPos() { std::cout << "플레이어" << number << "의 현재 위치: (" << position.position_x << ", " << position.position_y << ")" << std::endl; };
+	void printAcc() { std::cout << "플레이어" << number << "의 총알 정보: (" << bAccel.accel_x << ", " << bAccel.accel_y << ")" << std::endl; };
 };
 
 //스레드 함수

@@ -5,6 +5,7 @@
 #include <WinSock2.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <iostream>
 #include "Server.h"
 
 //이벤트 핸들
@@ -14,6 +15,8 @@ HANDLE recvData[2], updateData[2];
 Point2D playerPos[2];
 Accel2D bulletPos[2];
 
+Player player[2];
+
 int main() {
 
 	//초기화
@@ -21,6 +24,20 @@ int main() {
 	playerPos[0].position_y = 0;
 	playerPos[1].position_x = 0;
 	playerPos[1].position_y = 0;
+
+	Point2D tempPos;
+	tempPos.position_x = 0;
+	tempPos.position_y = 0;
+
+	Accel2D tempAcc;
+	tempAcc.accel_x = 0;
+	tempAcc.accel_y = 0;
+
+	player[0] = { tempPos, tempAcc, 0, 1};
+	player[1] = { tempPos, tempAcc, 0, 2};
+
+	//Player player = {tempPos, tempAcc, 0};
+	//Player player2 = { tempPos, tempAcc, 0 };
 
 	//이벤트 생성
 	recvData[0] = CreateEvent(nullptr, false, false, nullptr);
@@ -162,6 +179,34 @@ DWORD WINAPI getClient(LPVOID arg)
 			}
 
 			break;
+
+		case PLAYERHIT:
+			//포지션 데이터(Point2D) + 플레이어 체력(int) 수신
+
+			retval = recv(argInfo->client_sock, buf, sizeof(int), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("recv()");
+			}
+
+			int tempInt;
+			tempInt = *(int*)buf;
+
+			if (id == 0)
+			{
+				//클라이언트1 수신 정보 적용
+				printf("[TCP 클라이언트1 수신 정보] hp: %d\n", tempInt);
+				player[0].hp = tempInt;
+				player[0].printHp();
+			}
+			else
+			{
+				//클라이언트2 수신 정보 적용
+				printf("[TCP 클라이언트2 수신 정보] hp: %d\n", tempInt);
+				player[1].hp = tempInt;
+				player[1].printHp();
+			}
+
+			break;
 		}
 
 		//이벤트 활성화
@@ -214,7 +259,8 @@ DWORD WINAPI updateClient(LPVOID arg)
 
 		//헤더 변경
 		//snprintf(buf, sizeof(buf), "%d", PLAYERMOVE);
-		snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
+		//snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
+		snprintf(buf, sizeof(buf), "%d", PLAYERHIT);
 
 		header = atoi(buf);
 
@@ -271,7 +317,27 @@ DWORD WINAPI updateClient(LPVOID arg)
 				err_display("send()");
 			}
 
-			break;			
+			break;
+
+		case PLAYERHIT:
+			int tempInt;
+
+			if (id == 0)
+			{
+				tempInt = player[1].hp;
+			}
+			else
+			{
+				tempInt = player[0].hp;
+			}
+
+			//불릿 데이터 송신
+			retval = send(argInfo->client_sock, (char*)&player[0].hp, sizeof(int), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("send()");
+			}
+
+			break;
 		}
 
 		//event활성화
@@ -375,6 +441,9 @@ void clientButton()
 	acc.accel_x = 100;
 	acc.accel_y = 100;
 
+	int hp;
+	hp = 100;
+
 	//socket()
 	SOCKET server_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (server_sock == INVALID_SOCKET) err_quit("socket()");
@@ -393,7 +462,8 @@ void clientButton()
 	{
 		//header set
 		//snprintf(buf, sizeof(buf), "%d", PLAYERMOVE);
-		snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
+		//snprintf(buf, sizeof(buf), "%d", PLAYERSHOOT);
+		snprintf(buf, sizeof(buf), "%d", PLAYERHIT);
 
 		header = atoi(buf);
 
@@ -422,9 +492,16 @@ void clientButton()
 			}
 
 			break;
-		}
+		case PLAYERHIT:
 
-		
+			//체력 데이터 송신
+			retval = send(server_sock, (char*)&hp, sizeof(int), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("send()");
+			}
+
+			break;
+		}
 
 		//헤더 데이터 수신
 		//recvCommand(header);
@@ -461,6 +538,20 @@ void clientButton()
 			acc = *(Accel2D*)buf;
 
 			printf("[서버] 불릿 정보 수신 x: %f, y: %f\n", acc.accel_x, acc.accel_y);
+
+			break;
+
+		case PLAYERHIT:
+
+			//체력 데이터 수신
+			retval = recvn(server_sock, buf, sizeof(int), 0);
+			if (retval == SOCKET_ERROR) {
+				err_display("recv()");
+			}
+
+			hp = *(int*)buf;
+
+			printf("[서버] 체력 정보 수신 hp:%d\n", hp);
 
 			break;
 		}
